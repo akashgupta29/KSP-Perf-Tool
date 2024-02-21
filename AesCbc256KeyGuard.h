@@ -143,6 +143,7 @@ private:
                         return;
                     }
 
+                    delete[] cipherText;
                     end_time = std::chrono::high_resolution_clock::now();
                     execution_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
                     encrypt_count++;
@@ -228,6 +229,8 @@ private:
                         NCryptFreeObject(g_hKey);
                         return;
                     }
+
+                    delete[] decryptedText;
                     end_time = std::chrono::high_resolution_clock::now();
                     execution_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
                     decrypt_count++;
@@ -241,6 +244,7 @@ private:
             threads[idx].join();
         }
 
+        delete[] cipherText;
         // Generate average time report for Decrypt operation
         auto avg_execution_time = calculateAverage1(decrypt_duration_running_sum, decrypt_count);
         auto rps = calculateRps(testDuration, decrypt_count);

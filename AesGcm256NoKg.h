@@ -164,6 +164,7 @@ private:
                         return;
                     }
 
+                    delete[] cipherText;
                     end_time = std::chrono::high_resolution_clock::now();
                     execution_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
                     encrypt_count++;
@@ -243,40 +244,42 @@ private:
         {
             threads[idx] = thread([&]() {
                 DWORD decryptedSize = 0;
-            PBYTE decryptedText = NULL;
-            std::chrono::time_point<std::chrono::high_resolution_clock> start_time, end_time;
-            std::int64_t execution_time;
+                PBYTE decryptedText = NULL;
+                std::chrono::time_point<std::chrono::high_resolution_clock> start_time, end_time;
+                std::int64_t execution_time;
 
-            auto loop_start_time = std::chrono::steady_clock::now();
-            while (std::chrono::steady_clock::now() - loop_start_time < std::chrono::seconds(testDuration))
-            {
-                // Decrypt 
-                start_time = std::chrono::high_resolution_clock::now();
-                status = NCryptDecrypt(g_hKey, cipherText, cipherTextSize, &paddingInfo, NULL, 0, &decryptedSize, NCRYPT_PAD_CIPHER_FLAG);
-                if (status != ERROR_SUCCESS)
+                auto loop_start_time = std::chrono::steady_clock::now();
+                while (std::chrono::steady_clock::now() - loop_start_time < std::chrono::seconds(testDuration))
                 {
-                    wprintf(L"NCryptDecrypt1 failed with %x\n", status);
-                    NCryptFreeObject(g_hProvider);
-                    NCryptFreeObject(g_hKey);
-                    return;
-                }
+                    // Decrypt 
+                    start_time = std::chrono::high_resolution_clock::now();
+                    status = NCryptDecrypt(g_hKey, cipherText, cipherTextSize, &paddingInfo, NULL, 0, &decryptedSize, NCRYPT_PAD_CIPHER_FLAG);
+                    if (status != ERROR_SUCCESS)
+                    {
+                        wprintf(L"NCryptDecrypt1 failed with %x\n", status);
+                        NCryptFreeObject(g_hProvider);
+                        NCryptFreeObject(g_hKey);
+                        return;
+                    }
 
-                decryptedText = new BYTE[decryptedSize];
+                    decryptedText = new BYTE[decryptedSize];
 
-                status = NCryptDecrypt(g_hKey, cipherText, cipherTextSize, &paddingInfo, decryptedText, decryptedSize, &decryptedSize, NCRYPT_PAD_CIPHER_FLAG);
-                if (status != ERROR_SUCCESS)
-                {
-                    wprintf(L"NCryptDecrypt2 failed with %x\n", status);
-                    NCryptFreeObject(g_hProvider);
-                    NCryptFreeObject(g_hKey);
-                    return;
+                    status = NCryptDecrypt(g_hKey, cipherText, cipherTextSize, &paddingInfo, decryptedText, decryptedSize, &decryptedSize, NCRYPT_PAD_CIPHER_FLAG);
+                    if (status != ERROR_SUCCESS)
+                    {
+                        wprintf(L"NCryptDecrypt2 failed with %x\n", status);
+                        NCryptFreeObject(g_hProvider);
+                        NCryptFreeObject(g_hKey);
+                        return;
+                    }
+
+                    delete[] decryptedText;
+                    end_time = std::chrono::high_resolution_clock::now();
+                    execution_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+                    decrypt_count++;
+                    decrypt_duration_running_sum += execution_time;
                 }
-                end_time = std::chrono::high_resolution_clock::now();
-                execution_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-                decrypt_count++;
-                decrypt_duration_running_sum += execution_time;
-            }
-                });
+            });
         }
 
         for (int idx = 0; idx < threadCount; ++idx)
@@ -284,6 +287,7 @@ private:
             threads[idx].join();
         }
 
+        delete[] cipherText;
         // Generate average time report for Decrypt operation
         auto avg_execution_time = calculateAverage1(decrypt_duration_running_sum, decrypt_count);
         auto rps = calculateRps(testDuration, decrypt_count);
